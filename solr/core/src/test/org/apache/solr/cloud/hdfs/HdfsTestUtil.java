@@ -26,6 +26,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.lang3.time.FastDateFormat;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -37,6 +38,7 @@ import org.apache.hadoop.hdfs.server.namenode.ha.HATestUtil;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.util.IOUtils;
+import org.apache.solr.common.util.SuppressForbidden;
 import org.apache.solr.core.DirectoryFactory;
 import org.apache.solr.util.HdfsUtil;
 import org.slf4j.Logger;
@@ -63,9 +65,24 @@ public class HdfsTestUtil {
     return setupClass(dir, haTesting, true);
   }
 
+  /**
+   * Checks that commons-lang3 FastDateFormat works with configured locale
+   */
+  @SuppressForbidden(reason="Call FastDateFormat.format same way Hadoop calls it")
+  private static void checkFastDateFormat() {
+    try {
+      FastDateFormat.getInstance().format(System.currentTimeMillis());
+    } catch (ArrayIndexOutOfBoundsException e) {
+      LuceneTestCase.assumeNoException("commons-lang3 FastDateFormat doesn't work with " +
+          Locale.getDefault().toLanguageTag(), e);
+    }
+  }
+
   public static MiniDFSCluster setupClass(String dir, boolean safeModeTesting, boolean haTesting) throws Exception {
     LuceneTestCase.assumeFalse("HDFS tests were disabled by -Dtests.disableHdfs",
       Boolean.parseBoolean(System.getProperty("tests.disableHdfs", "false")));
+
+    checkFastDateFormat();
 
     if (!HA_TESTING_ENABLED) haTesting = false;
 
